@@ -1,4 +1,4 @@
-Some scripts for mapping the computer keyboard keys to microtonal scales of various kinds, making the keyboard act like a synth.
+Some processing sketches for mapping the computer keyboard keys to microtonal scales of various kinds, making the keyboard act like a synth.
 
 For the "maj, min, maj7, min7, dom chord keyboard.pde" keyboard variant, the following rules apply:
 
