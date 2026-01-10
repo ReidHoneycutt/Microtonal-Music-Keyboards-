@@ -1,0 +1,130 @@
+/**
+ * Sa -> Re (22-shruti-style landmarks) mouse glide
+ * Landmarks: 1, 256/243, 16/15, 10/9, 9/8  (Sa -> Re region)
+ *
+ * Requires: Processing Sound library (Sketch > Import Library > Sound)
+ */
+
+import processing.sound.*;
+
+SawOsc lead;
+SinOsc drone;
+
+float saHz = 220.0;     // tonic Sa (change as desired)
+float leadAmp = 0.12;
+float droneAmp = 0.08;
+
+boolean droneOn = true;
+boolean equalSlideMode = false; // if true: smooth curve Sa->Re without landmarks
+
+// 22-shruti-style landmark ratios in the Sa->Re region
+final float[] R = {
+  1.0,
+  256.0/243.0,
+  16.0/15.0,
+  10.0/9.0,
+  9.0/8.0
+};
+
+float currentFreq = 220.0;
+float smooth = 0.15;
+
+void setup() {
+  size(900, 260);
+  textSize(16);
+
+  lead = new SawOsc(this);
+  lead.amp(leadAmp);
+  lead.freq(saHz);
+  lead.play();
+
+  drone = new SinOsc(this);
+  drone.amp(droneAmp);
+  drone.freq(saHz);
+  drone.play();
+
+  currentFreq = saHz;
+}
+
+void draw() {
+  background(18);
+
+  float t = constrain(mouseX / (float)width, 0, 1);
+
+  float ratio;
+  if (equalSlideMode) {
+    // Pure continuous mapping Sa->Re: ratio = (9/8)^t
+    ratio = pow(R[R.length - 1], t);
+  } else {
+    // Piecewise glide through shruti landmarks with exponential interpolation
+    ratio = piecewiseExpRatio(t, R);
+  }
+
+  float targetFreq = saHz * ratio;
+  currentFreq = lerp(currentFreq, targetFreq, smooth);
+  lead.freq(currentFreq);
+
+  if (droneOn) {
+    drone.amp(droneAmp);
+    drone.freq(saHz);
+  } else {
+    drone.amp(0);
+  }
+
+  // UI
+  fill(240);
+  text("MouseX glides Sa→Re using 22-shruti-style landmarks (1, 256/243, 16/15, 10/9, 9/8)", 20, 35);
+  text("Sa = " + nf(saHz, 0, 2) + " Hz    Ratio = " + nf(ratio, 0, 6) + "    Freq = " + nf(currentFreq, 0, 2) + " Hz", 20, 65);
+
+  text("Keys: [D] toggle drone  |  [E] toggle equal-slide (no landmarks)  |  [UP/DOWN] change Sa", 20, 95);
+
+  // Draw landmark ticks
+  drawLandmarks(R);
+
+  // Cursor line
+  stroke(255);
+  line(mouseX, 150, mouseX, height);
+}
+
+float piecewiseExpRatio(float t, float[] ratios) {
+  int n = ratios.length;
+  float pos = t * (n - 1);
+  int i = (int)floor(pos);
+  i = constrain(i, 0, n - 2);
+
+  float local = pos - i; // in [0,1)
+  float a = ratios[i];
+  float b = ratios[i + 1];
+
+  // Exponential interpolation so pitch moves smoothly in log-frequency space
+  return a * pow(b / a, local);
+}
+
+void drawLandmarks(float[] ratios) {
+  // Map each landmark to an x position based on its segment index (uniform in t)
+  // This reflects the piecewise mapping: each micro-interval gets equal horizontal width.
+  int n = ratios.length;
+
+  stroke(120);
+  line(0, 150, width, 150);
+
+  for (int i = 0; i < n; i++) {
+    float x = map(i, 0, n - 1, 0, width);
+    stroke(80);
+    line(x, 145, x, 175);
+    noStroke();
+    fill(200);
+    String label = (i == 0) ? "Sa 1/1" :
+                   (i == n - 1) ? "Re 9/8" :
+                   nf(ratios[i], 0, 6);
+    text(label, x + 6, 190);
+  }
+}
+
+void keyPressed() {
+  if (key == 'd' || key == 'D') droneOn = !droneOn;
+  if (key == 'e' || key == 'E') equalSlideMode = !equalSlideMode;
+
+  if (keyCode == UP)   saHz *= pow(2, 1.0/12.0);
+  if (keyCode == DOWN) saHz /= pow(2, 1.0/12.0);
+}
